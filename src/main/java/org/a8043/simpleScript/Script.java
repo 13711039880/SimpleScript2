@@ -10,6 +10,7 @@ import java.util.List;
 
 public class Script {
     private String scriptString;
+    @Getter
     private final List<ScriptMethod> methodList = new ArrayList<>();
     @Getter
     private ScriptRunner runner;

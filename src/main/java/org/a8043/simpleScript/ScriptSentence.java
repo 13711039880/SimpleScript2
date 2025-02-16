@@ -6,8 +6,8 @@ import org.jetbrains.annotations.NotNull;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ScriptSentence {
     private final Script script;
@@ -76,14 +76,22 @@ public class ScriptSentence {
     }
 
     public void run() {
-        try {
-            Method method = ScriptRunner.class.getMethod(run, Object[].class);
-            method.invoke(script.getRunner(), (Object) args.toArray());
-        } catch (NoSuchMethodException e) {
-            throw new RuntimeException("找不到方法: %s(%s)".formatted(run, e.getMessage()));
-        } catch (InvocationTargetException | IllegalAccessException e) {
-            throw new RuntimeException(e);
-//            throw new RuntimeException("运行方法失败: %s(%s)".formatted(run, e.getMessage()));
+        AtomicBoolean isFinishRun = new AtomicBoolean(false);
+        script.getMethodList().forEach(method -> {
+            if (method.getName().equals(run)) {
+                isFinishRun.set(true);
+                method.run(args.toArray());
+            }
+        });
+        if (!isFinishRun.get()) {
+            try {
+                Method method = ScriptRunner.class.getMethod(run, Object[].class);
+                method.invoke(script.getRunner(), (Object) args.toArray());
+            } catch (NoSuchMethodException e) {
+                throw new RuntimeException("找不到方法: %s(%s)".formatted(run, e.getMessage()));
+            } catch (InvocationTargetException | IllegalAccessException e) {
+                throw new RuntimeException("运行方法失败: %s(%s)".formatted(run, e.getMessage()));
+            }
         }
     }
 }

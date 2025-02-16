@@ -3,8 +3,10 @@ println("a");
 newThread({
     #run#
     sleep(1000);
-    println("aaa");
+    println("abc");
 });
+abc();
 println("a");
 println("a");
-println("a");
+#abc#
+println("b");
