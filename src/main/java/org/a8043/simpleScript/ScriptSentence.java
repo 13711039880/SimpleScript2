@@ -16,10 +16,18 @@ public class ScriptSentence {
     private final List<Object> args = new ArrayList<>();
 
     @Contract(pure = true)
-    public ScriptSentence(Script script, String run, @NotNull String argsString) {
+    public ScriptSentence(Script script, @NotNull String run, @NotNull String argsString) {
         this.script = script;
-        this.run = run;
         this.argsString = argsString;
+
+        while (true) {
+            if (run.startsWith(" ")) {
+                run = run.substring(1);
+            } else {
+                break;
+            }
+        }
+        this.run = run;
 
         if (!argsString.equals("")) {
             String[] argsChars = argsString.split("");

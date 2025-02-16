@@ -50,10 +50,14 @@ public class ScriptRunner {
         if (args.length == 0) {
             throw new IllegalArgumentException("参数长度不正确");
         }
+        if (!(args[0] instanceof ScriptVariable variable)) {
+            throw new WrongTypeException("参数类型不正确");
+        }
         Object[] addCount = Arrays.copyOfRange(args, 1, args.length);
         int i = 0;
         for (Object count : addCount) {
             i += Integer.parseInt(count.toString());
         }
+        variable.setValue(i);
     }
 }

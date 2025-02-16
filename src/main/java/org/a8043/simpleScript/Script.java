@@ -2,21 +2,18 @@ package org.a8043.simpleScript;
 
 import cn.hutool.core.io.FileUtil;
 import lombok.Getter;
-import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 public class Script {
     private String scriptString;
     private final List<ScriptMethod> methodList = new ArrayList<>();
     @Getter
-    private ScriptRecorder recorder;
-    @Getter
     private ScriptRunner runner;
+    private final List<ScriptVariable> variableList = new ArrayList<>();
 
     public Script(File file) {
         String originalString = FileUtil.readString(file, StandardCharsets.UTF_8);
@@ -89,7 +86,6 @@ public class Script {
             charIndex++;
         }
 
-        recorder = new ScriptRecorder();
         runner = new ScriptRunner(this);
     }
 
@@ -105,6 +101,18 @@ public class Script {
         methodList.forEach(method -> {
             if (method.getName().equals(methodName)) {
                 method.run((Object) args);
+            }
+        });
+    }
+
+    public void addVariable(String name) {
+        variableList.add(new ScriptVariable(name));
+    }
+
+    public void setVariable(String name, Object value) {
+        variableList.forEach(variable -> {
+            if (variable.getName().equals(name)) {
+                variable.setValue(value);
             }
         });
     }
