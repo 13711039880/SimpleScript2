@@ -1,1 +1,4 @@
-# SimpleScript2
+# SimpleScript2——一个非常简单的脚本语言
+## 命令行参数
+- `-docs` 打开文档
+- ` ` 版本信息
