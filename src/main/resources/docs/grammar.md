@@ -2,13 +2,13 @@
 ## 方法
 ### 方法声明
 ```SimpleScript
-#方法名 参数1类型 参数1名,参数2类型 参数2名...#
+#方法名 参数1名,参数2名...#
 语句
 ```
 ### 特殊方法
 #### main
 ```SimpleScript
-#main strings args#
+#main args#
 语句
 ```
 ## 语句

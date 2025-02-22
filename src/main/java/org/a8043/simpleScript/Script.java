@@ -17,10 +17,8 @@ public class Script {
     private final List<ScriptVariable> variableList = new ArrayList<>();
 
     public Script(File file) {
-        String originalString = FileUtil.readString(file, StandardCharsets.UTF_8);
-        // noinspection UnusedAssignment
-        //换行符特殊处理
-        scriptString = originalString;
+        // 换行符特殊处理
+        scriptString = FileUtil.readString(file, StandardCharsets.UTF_8);
         scriptString = scriptString.replace("\r\n", "");
         scriptString = scriptString.replace("\n", "");
         init();

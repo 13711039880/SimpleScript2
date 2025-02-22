@@ -1,4 +1,4 @@
-#main strings args#
+#main args#
 println("a");
 newThread({
     #run#

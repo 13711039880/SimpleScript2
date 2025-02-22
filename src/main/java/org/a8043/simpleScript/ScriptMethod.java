@@ -26,7 +26,7 @@ public class ScriptMethod {
         if (nameAndArgs.length == 1) {
             args = new String[0];
         } else {
-        args = nameAndArgs[1].split(",");
+            args = nameAndArgs[1].split(",");
         }
 
         boolean isInString = false;
