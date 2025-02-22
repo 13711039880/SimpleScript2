@@ -18,11 +18,8 @@ public class Script {
 
     public Script(File file) {
         String originalString = FileUtil.readString(file, StandardCharsets.UTF_8);
-        if (System.getProperty("os.name").startsWith("Windows")) {
-            scriptString = originalString.replace("\r\n", "");
-        } else {
-            scriptString = originalString.replace("\n", "");
-        }
+        scriptString = originalString.replace("\r\n", "");
+        scriptString = originalString.replace("\n", "");
         init();
     }
 
