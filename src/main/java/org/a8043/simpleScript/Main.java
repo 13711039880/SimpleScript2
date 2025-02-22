@@ -36,7 +36,7 @@ public class Main {
             }
             DocsViewer docsViewer = new DocsViewer("SimpleScript文档", new URL[]{
                 Main.class.getResource("/docs/introduce.md"),
-                Main.class.getResource("/docs/start.md"),
+                Main.class.getResource("/docs/grammar.md"),
                 Main.class.getResource("/docs/canRun.md")
             });
             docsViewer.getMainFrame().setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
