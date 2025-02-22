@@ -19,8 +19,10 @@ public class Script {
     public Script(File file) {
         String originalString = FileUtil.readString(file, StandardCharsets.UTF_8);
         // noinspection UnusedAssignment
-        scriptString = originalString.replace("\r\n", "");
-        scriptString = originalString.replace("\n", "");
+        //换行符特殊处理
+        scriptString = originalString;
+        scriptString = scriptString.replace("\r\n", "");
+        scriptString = scriptString.replace("\n", "");
         init();
     }
 
