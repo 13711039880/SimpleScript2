@@ -6,8 +6,11 @@ import org.jetbrains.annotations.NotNull;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+
+import static org.a8043.simpleScript.Main.LIBRARIES_RUNNER_LIST;
 
 public class ScriptSentence {
     private final Script script;
@@ -83,14 +86,33 @@ public class ScriptSentence {
                 method.run(args.toArray());
             }
         });
+        String newRun = run.replace(".", "_");
         if (!isFinishRun.get()) {
-            try {
-                Method method = ScriptRunner.class.getMethod(run, Object[].class);
-                method.invoke(script.getRunner(), (Object) args.toArray());
-            } catch (NoSuchMethodException e) {
-                throw new RuntimeException("找不到方法: %s(%s)".formatted(run, e.getMessage()));
-            } catch (InvocationTargetException | IllegalAccessException e) {
-                throw new RuntimeException("运行方法失败: %s(%s)".formatted(run, e.getMessage()));
+            if (Arrays.stream(ScriptRunner.class.getMethods()).anyMatch(method -> method.getName().equals(newRun))) {
+                try {
+                    Method method = ScriptRunner.class.getMethod(newRun, Object[].class);
+                    method.invoke(script.getRunner(), (Object) args.toArray());
+                } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
+                    throw new RuntimeException(e);
+                }
+            } else {
+                AtomicBoolean isFinishRunLibrary = new AtomicBoolean(false);
+                LIBRARIES_RUNNER_LIST.forEach(library -> {
+                    if (Arrays.stream(library.getMethods()).anyMatch(method -> method.getName().equals(newRun))) {
+                        try {
+                            Method method = library.getMethod(newRun, Object[].class);
+                            Object instance = library.getDeclaredConstructor(Script.class).newInstance(script);
+                            method.invoke(instance, (Object) args.toArray());
+                        } catch (NoSuchMethodException | InvocationTargetException | InstantiationException |
+                                 IllegalAccessException e) {
+                            throw new RuntimeException(e);
+                        }
+                        isFinishRunLibrary.set(true);
+                    }
+                });
+                if (!isFinishRunLibrary.get()) {
+                    throw new RuntimeException(new NoSuchMethodException("找不到方法: " + newRun));
+                }
             }
         }
     }
