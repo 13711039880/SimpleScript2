@@ -32,49 +32,81 @@ public class ScriptSentence {
         }
         this.run = run;
 
-        if (!argsString.equals("")) {
-            String[] argsChars = argsString.split("");
-            boolean isInString = false;
-            boolean isInSonScript = false;
-            int argStart = 1;
-            int charIndex = 0;
-            int sonScriptStart = 0;
-            for (String aChar : argsChars) {
-                if (aChar.equals("\"")) {
-                    isInString = !isInString;
-                }
-                if (aChar.equals("{") && !isInString) {
-                    sonScriptStart = charIndex + 1;
-                    isInSonScript = true;
-                }
-                if (aChar.equals("}") && !isInString) {
-                    isInSonScript = false;
-                }
-                if ((charIndex + 1 == argsChars.length || argsChars[charIndex + 1].equals(","))
-                    && !isInString && !isInSonScript) {
+        if (!argsString.isEmpty()) {
+            List<String> argsStringList = new ArrayList<>();
+            {
+                int argStart = 0;
+                boolean isInString = false;
+                boolean isInSonScript = false;
+                int charIndex = 0;
+                for (String aChar : argsString.split("")) {
                     if (aChar.equals("\"")) {
-                        args.add(argsString.substring(argStart, charIndex));
-                    } else if (aChar.equals("}")) {
-                        args.add(new Script(argsString.substring(sonScriptStart, charIndex)));
-                    } else {
-                        String substring = argsString.substring(argStart - 1, charIndex + 1);
-                        switch (substring) {
-                            case "true" -> args.add(true);
-                            case "false" -> args.add(false);
-                            case "null" -> args.add(null);
-                            default -> {
-                                try {
-                                    args.add(Double.parseDouble(substring));
-                                } catch (NumberFormatException e) {
-                                    throw new WrongTypeException("不正确的类型: %s".formatted(substring));
+                        isInString = !isInString;
+                    }
+                    if (aChar.equals("{") && !isInString) {
+                        isInSonScript = true;
+                    }
+                    if (aChar.equals("}") && !isInString) {
+                        isInSonScript = false;
+                    }
+                    if (aChar.equals(",") && !isInString && !isInSonScript) {
+                        argsStringList.add(argsString.substring(argStart, charIndex));
+                        argStart = charIndex + 1;
+                    }
+                    charIndex++;
+                }
+                argsStringList.add(argsString.substring(argStart, charIndex));
+            }
+
+            argsStringList.forEach(arg -> {
+                String[] argsChars = arg.split("");
+                boolean isInString = false;
+                boolean isInSonScript = false;
+                int argStart = 1;
+                int charIndex = 0;
+                int sonScriptStart = 0;
+                int variableStart = 0;
+                for (String aChar : argsChars) {
+                    if (aChar.equals("\"")) {
+                        isInString = !isInString;
+                    }
+                    if (aChar.equals("{") && !isInString) {
+                        sonScriptStart = charIndex + 1;
+                        isInSonScript = true;
+                    }
+                    if (aChar.equals("}") && !isInString) {
+                        isInSonScript = false;
+                    }
+                    if (aChar.equals("$") && !isInString && !isInSonScript) {
+                        variableStart = charIndex + 1;
+                    }
+                    if ((charIndex + 1 == argsChars.length || argsChars[charIndex + 1].equals(","))
+                        && !isInString && !isInSonScript) {
+                        if (aChar.equals("\"")) {
+                            args.add(argsString.substring(argStart, charIndex));
+                        } else if (aChar.equals("}")) {
+                            args.add(new Script(argsString.substring(sonScriptStart, charIndex)));
+                        } else if (aChar.equals("%")) {
+                            args.add(script.getVariable(argsString.substring(variableStart, charIndex)));
+                        } else {
+                            switch (arg) {
+                                case "true" -> args.add(true);
+                                case "false" -> args.add(false);
+                                case "null" -> args.add(null);
+                                default -> {
+                                    try {
+                                        args.add(Double.parseDouble(arg));
+                                    } catch (NumberFormatException e) {
+                                        throw new WrongTypeException("不正确的类型: " + arg);
+                                    }
                                 }
                             }
                         }
+                        argStart = charIndex + 1;
                     }
-                    argStart = charIndex + 1;
+                    charIndex++;
                 }
-                charIndex++;
-            }
+            });
         }
     }
 

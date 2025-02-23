@@ -7,6 +7,7 @@ import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class Script {
     private String scriptString;
@@ -114,5 +115,20 @@ public class Script {
                 variable.setValue(value);
             }
         });
+    }
+
+    public ScriptVariable getVariable(String name) {
+        AtomicReference<ScriptVariable> value = new AtomicReference<>();
+        variableList.forEach(variable -> {
+            if (variable.getName().equals(name)) {
+                value.set(variable);
+            }
+        });
+        if (value.get() == null) {
+            ScriptVariable variable = new ScriptVariable(name);
+            variableList.add(variable);
+            return variable;
+        }
+        return value.get();
     }
 }

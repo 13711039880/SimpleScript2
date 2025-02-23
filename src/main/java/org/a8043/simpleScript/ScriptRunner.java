@@ -1,23 +1,20 @@
 package org.a8043.simpleScript;
 
-import cn.hutool.core.lang.ClassScanner;
 import cn.hutool.core.thread.ThreadUtil;
-import cn.hutool.core.util.ClassUtil;
 import org.a8043.simpleUtil.util.Config;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.yaml.snakeyaml.Yaml;
 
+import javax.swing.*;
+import java.awt.*;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
 
 import static org.a8043.simpleScript.Main.LIBRARIES_RUNNER_LIST;
 
@@ -34,14 +31,22 @@ public class ScriptRunner {
         if (args.length != 1) {
             throw new IllegalArgumentException("参数长度不正确");
         }
-        System.out.println(args[0]);
+        if (args[0] instanceof ScriptVariable) {
+            System.out.println(((ScriptVariable) args[0]).getValue());
+        } else {
+            System.out.println(args[0]);
+        }
     }
 
     public void print(Object @NotNull ... args) {
         if (args.length != 1) {
             throw new IllegalArgumentException("参数长度不正确");
         }
-        System.out.print(args[0]);
+        if (args[0] instanceof ScriptVariable) {
+            System.out.print(((ScriptVariable) args[0]).getValue());
+        } else {
+            System.out.print(args[0]);
+        }
     }
 
     public void newThread(Object @NotNull ... args) {
@@ -109,5 +114,117 @@ public class ScriptRunner {
             i += Integer.parseInt(count.toString());
         }
         variable.setValue(i);
+    }
+
+    public void newVariable(Object @NotNull ... args) {
+        if (args.length != 1) {
+            throw new IllegalArgumentException("参数长度不正确");
+        }
+        if (!(args[0] instanceof String name)) {
+            throw new WrongTypeException("参数类型不正确");
+        }
+        script.addVariable(name);
+    }
+
+    public void frame_new(Object @NotNull ... args) {
+        if (args.length != 1) {
+            throw new IllegalArgumentException("参数长度不正确");
+        }
+        if (!(args[0] instanceof ScriptVariable variable)) {
+            throw new WrongTypeException("参数类型不正确");
+        }
+        variable.setValue(new JFrame());
+    }
+
+    public void frame_setTitle(Object @NotNull ... args) {
+        if (args.length != 2) {
+            throw new IllegalArgumentException("参数长度不正确");
+        }
+        if (!(args[0] instanceof ScriptVariable variable)) {
+            throw new WrongTypeException("参数类型不正确");
+        }
+        if (!(args[1] instanceof String title)) {
+            throw new WrongTypeException("参数类型不正确");
+        }
+        ((JFrame) variable.getValue()).setTitle(title);
+    }
+
+    public void frame_setSize(Object @NotNull ... args) {
+        if (args.length != 3) {
+            throw new IllegalArgumentException("参数长度不正确");
+        }
+        if (!(args[0] instanceof ScriptVariable variable)) {
+            throw new WrongTypeException("参数类型不正确");
+        }
+        if (!(args[1] instanceof Double width)) {
+            throw new WrongTypeException("参数类型不正确");
+        }
+        if (!(args[2] instanceof Double height)) {
+            throw new WrongTypeException("参数类型不正确");
+        }
+        ((JFrame) variable.getValue()).setSize(width.intValue(), height.intValue());
+    }
+
+    public void frame_add(Object @NotNull ... args) {
+        if (args.length != 2) {
+            throw new IllegalArgumentException("参数长度不正确");
+        }
+        if (!(args[0] instanceof ScriptVariable variable)) {
+            throw new WrongTypeException("参数类型不正确");
+        }
+        if (!(args[1] instanceof ScriptVariable componentVariable)) {
+            throw new WrongTypeException("参数类型不正确");
+        }
+        ((JFrame) variable.getValue()).add((Component) componentVariable.getValue());
+    }
+
+    public void frame_setVisible(Object @NotNull ... args) {
+        if (args.length != 2) {
+            throw new IllegalArgumentException("参数长度不正确");
+        }
+        if (!(args[0] instanceof ScriptVariable variable)) {
+            throw new WrongTypeException("参数类型不正确");
+        }
+        if (!(args[1] instanceof Boolean visible)) {
+            throw new WrongTypeException("参数类型不正确");
+        }
+        ((JFrame) variable.getValue()).setVisible(visible);
+    }
+
+    public void frame_button_new(Object @NotNull ... args) {
+        if (args.length != 1) {
+            throw new IllegalArgumentException("参数长度不正确");
+        }
+        if (!(args[0] instanceof ScriptVariable variable)) {
+            throw new WrongTypeException("参数类型不正确");
+        }
+        variable.setValue(new JButton());
+    }
+
+    public void frame_button_setText(Object @NotNull ... args) {
+        if (args.length != 2) {
+            throw new IllegalArgumentException("参数长度不正确");
+        }
+        if (!(args[0] instanceof ScriptVariable variable)) {
+            throw new WrongTypeException("参数类型不正确");
+        }
+        if (!(args[1] instanceof String text)) {
+            throw new WrongTypeException("参数类型不正确");
+        }
+        ((JButton) variable.getValue()).setText(text);
+    }
+
+    public void frame_button_addActionListener(Object @NotNull ... args) {
+        if (args.length != 2) {
+            throw new IllegalArgumentException("参数长度不正确");
+        }
+        if (!(args[0] instanceof ScriptVariable variable)) {
+            throw new WrongTypeException("参数类型不正确");
+        }
+        if (!(args[1] instanceof Script actionListener)) {
+            throw new WrongTypeException("参数类型不正确");
+        }
+        ((JButton) variable.getValue()).addActionListener(e ->
+            actionListener.run("actionPerformed", e));
     }
 }
