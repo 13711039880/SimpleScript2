@@ -1,6 +1,7 @@
 package org.a8043.simpleScript;
 
 import cn.hutool.core.thread.ThreadUtil;
+import org.a8043.simpleScript.exceptions.WrongTypeException;
 import org.a8043.simpleUtil.util.Config;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;

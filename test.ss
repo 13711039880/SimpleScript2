@@ -1,15 +1,13 @@
 #main args#
-frame.new($frame%);
-frame.setSize($frame%,300,200);
+frame.new(frame);
+frame.setSize(frame,300,200);
 
-frame.button.new($button%);
-println($button%);
-frame.button.setText($button%,"Click me");
-frame.button.addActionListener($button%,{
+frame.button.new(button);
+frame.button.setText(button,"a");
+frame.button.addActionListener(button,{
     #actionPerformed e#
     println("Hello World!!!");
 });
-println($button%);
-frame.add($frame%,$button%);
+frame.add(frame,button);
 
-frame.setVisible($frame%,true);
+frame.setVisible(frame,true);

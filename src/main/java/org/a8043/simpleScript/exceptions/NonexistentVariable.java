@@ -1,4 +1,4 @@
-package org.a8043.simpleScript;
+package org.a8043.simpleScript.exceptions;
 
 public class NonexistentVariable extends RuntimeException {
     public NonexistentVariable(String name) {
