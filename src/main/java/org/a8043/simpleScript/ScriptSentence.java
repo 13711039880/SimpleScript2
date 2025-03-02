@@ -10,16 +10,16 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.a8043.simpleScript.Main.LIBRARIES_RUNNER_LIST;
 
 public class ScriptSentence {
-    private final Script script;
-    private final String run;
-    private final List<Object> args = new ArrayList<>();
+    private Script script;
+    private String run;
+    private List<Object> args = new ArrayList<>();
 
-    @Contract(pure = true)
-    public ScriptSentence(Script script, @NotNull String run, @NotNull String argsString) {
+    public void init(Script script, @NotNull String run, @NotNull String argsString) {
         this.script = script;
 
         while (true) {
@@ -37,6 +37,7 @@ public class ScriptSentence {
                 int argStart = 0;
                 boolean isInString = false;
                 boolean isInSonScript = false;
+                List<Boolean> isInSonSentence = new ArrayList<>();
                 int charIndex = 0;
                 for (String aChar : argsString.split("")) {
                     if (aChar.equals("\"")) {
@@ -48,7 +49,13 @@ public class ScriptSentence {
                     if (aChar.equals("}") && !isInString) {
                         isInSonScript = false;
                     }
-                    if (aChar.equals(",") && !isInString && !isInSonScript) {
+                    if (aChar.equals("(") && !isInString && !isInSonScript) {
+                        isInSonSentence.add(true);
+                    }
+                    if (aChar.equals(")") && !isInString && !isInSonScript) {
+                        isInSonSentence.remove(isInSonSentence.size() - 1);
+                    }
+                    if (aChar.equals(",") && !isInString && !isInSonScript && isInSonSentence.isEmpty()) {
                         argsStringList.add(argsString.substring(argStart, charIndex));
                         argStart = charIndex + 1;
                     }
@@ -61,9 +68,11 @@ public class ScriptSentence {
                 String[] argsChars = arg.split("");
                 boolean isInString = false;
                 boolean isInSonScript = false;
+                List<Boolean> isInSonSentence = new ArrayList<>();
                 int argStart = 1;
                 int charIndex = 0;
                 int sonScriptStart = 0;
+                List<Integer> sonSentenceStart = new ArrayList<>();
                 for (String aChar : argsChars) {
                     if (aChar.equals("\"")) {
                         isInString = !isInString;
@@ -75,12 +84,22 @@ public class ScriptSentence {
                     if (aChar.equals("}") && !isInString) {
                         isInSonScript = false;
                     }
+                    if (aChar.equals("(") && !isInString && !isInSonScript) {
+                        sonSentenceStart.add(charIndex + 1);
+                        isInSonSentence.add(true);
+                    }
+                    if (aChar.equals(")") && !isInString && !isInSonScript) {
+                        isInSonSentence.remove(isInSonSentence.size() - 1);
+                    }
                     if ((charIndex + 1 == argsChars.length || argsChars[charIndex + 1].equals(","))
-                        && !isInString && !isInSonScript) {
+                        && !isInString && !isInSonScript && isInSonSentence.isEmpty()) {
                         if (aChar.equals("\"")) {
                             args.add(arg.substring(argStart, charIndex));
                         } else if (aChar.equals("}")) {
                             args.add(new Script(arg.substring(sonScriptStart, charIndex)));
+                        } else if (aChar.equals(")")) {
+                            String sentence = arg.substring(sonSentenceStart.get(0), charIndex);
+                            args.add(new ScriptSentence(script, sentence));
                         } else if (aChar.equals("0") || aChar.equals("1") || aChar.equals("2")
                                    || aChar.equals("3") || aChar.equals("4") || aChar.equals("5")
                                    || aChar.equals("6") || aChar.equals("7") || aChar.equals("8")
@@ -106,7 +125,52 @@ public class ScriptSentence {
         }
     }
 
-    public void run() {
+    public ScriptSentence(Script script, @NotNull String sentence) {
+        String[] sentenceChars = sentence.split("");
+        boolean isInString = false;
+        boolean isInSonScript = false;
+        List<Boolean> isInSonSentence = new ArrayList<>();
+        int argsStart = 0;
+
+        int charIndex = 0;
+        for (String aChar : sentenceChars) {
+            if (aChar.equals("\"")) {
+                isInString = !isInString;
+            }
+            if (aChar.equals("{") && !isInString) {
+                isInSonScript = true;
+            }
+            if (aChar.equals("}") && !isInString) {
+                isInSonScript = false;
+            }
+            if (aChar.equals("(") && !isInString && !isInSonScript) {
+                isInSonSentence.add(true);
+            }
+            if (aChar.equals(")") && !isInString && !isInSonScript) {
+                isInSonSentence.remove(isInSonSentence.size() - 1);
+            }
+            if (aChar.equals("(") && !isInString && !isInSonScript && isInSonSentence.size() == 1) {
+                argsStart = charIndex + 1;
+            } else if (aChar.equals(")") && !isInString && !isInSonScript && isInSonSentence.isEmpty()) {
+                String argsString = sentence.substring(argsStart, charIndex);
+                init(script, sentence.substring(0, argsStart - 1), argsString);
+            }
+            charIndex++;
+        }
+    }
+
+    public Object run() {
+        List<Object> newArgs = new ArrayList<>();
+        args.forEach(arg -> {
+            if (arg instanceof ScriptSentence sentence) {
+                newArgs.add(sentence.run());
+            } else {
+                newArgs.add(arg);
+            }
+        });
+        args = newArgs;
+
+        AtomicReference<Object> returnValue = new AtomicReference<>();
         AtomicBoolean isFinishRun = new AtomicBoolean(false);
         script.getMethodList().forEach(method -> {
             if (method.getName().equals(run)) {
@@ -117,27 +181,37 @@ public class ScriptSentence {
         if (run.startsWith("*")) {
             String newRun = run.substring(1);
             String[] runArray = newRun.split("\\.");
-            String className = newRun.substring(0, newRun.length() - runArray[runArray.length - 1].length() - 1);
-            String methodName = runArray[runArray.length - 1];
-
-            Class<?> clazz;
-            try {
-                clazz = Class.forName(className);
-            } catch (ClassNotFoundException e) {
-                throw new RuntimeException(e);
-            }
             Method method = null;
-            for (Method aMethod : clazz.getMethods()) {
-                if (aMethod.getName().equals(methodName)) {
-                    method = aMethod;
+            String methodName;
+            if (runArray.length == 1) {
+                methodName = runArray[0];
+                Object obj = args.get(0);
+                Class<?> clazz = obj.getClass();
+                for (Method aMethod : clazz.getMethods()) {
+                    if (aMethod.getName().equals(methodName)) {
+                        method = aMethod;
+                    }
+                }
+            } else {
+                String className = newRun.substring(0, newRun.length() - runArray[runArray.length - 1].length() - 1);
+                methodName = runArray[runArray.length - 1];
+                Class<?> clazz;
+                try {
+                    clazz = Class.forName(className);
+                } catch (ClassNotFoundException e) {
+                    throw new RuntimeException(e);
+                }
+                for (Method aMethod : clazz.getMethods()) {
+                    if (aMethod.getName().equals(methodName)) {
+                        method = aMethod;
+                    }
                 }
             }
             if (method == null) {
                 throw new RuntimeException("找不到方法: " + methodName);
             }
-
             try {
-                method.invoke(args.get(0), args.subList(1, args.size()).toArray());
+                returnValue.set(method.invoke(args.get(0), args.subList(1, args.size()).toArray()));
             } catch (IllegalAccessException | InvocationTargetException e) {
                 throw new RuntimeException(e);
             }
@@ -158,7 +232,7 @@ public class ScriptSentence {
                             try {
                                 Method method = library.getMethod(newRun, Object[].class);
                                 Object instance = library.getDeclaredConstructor(Script.class).newInstance(script);
-                                method.invoke(instance, (Object) args.toArray());
+                                returnValue.set(method.invoke(instance, (Object) args.toArray()));
                             } catch (NoSuchMethodException | InvocationTargetException | InstantiationException |
                                      IllegalAccessException e) {
                                 throw new RuntimeException(e);
@@ -172,5 +246,7 @@ public class ScriptSentence {
                 }
             }
         }
+
+        return returnValue.get();
     }
 }

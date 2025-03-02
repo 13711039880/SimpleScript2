@@ -100,13 +100,17 @@ public class Script {
     public void run(String methodName, Object... args) {
         methodList.forEach(method -> {
             if (method.getName().equals(methodName)) {
-                method.run((Object) args);
+                method.run(args);
             }
         });
     }
 
     public void addVariable(String name) {
         variableList.add(new ScriptVariable(name));
+    }
+
+    public void addVariable(ScriptVariable variable) {
+        variableList.add(variable);
     }
 
     public void setVariable(String name, Object value) {

@@ -52,34 +52,14 @@ public class ScriptMethod {
     }
 
     public void run(Object @NotNull ... runArgs) {
+        int i = 0;
+        for (Object arg : runArgs) {
+            script.addVariable(args[i]);
+            script.setVariable(args[i], arg);
+            i++;
+        }
         List<ScriptSentence> sentenceList = new ArrayList<>();
-        sentenceStringList.forEach(sentence -> {
-            String[] sentenceChars = sentence.split("");
-            boolean isInString = false;
-            boolean isInSonScript = false;
-            int argsStart = 0;
-
-            int charIndex = 0;
-            for (String aChar : sentenceChars) {
-                if (aChar.equals("\"")) {
-                    isInString = !isInString;
-                }
-                if (aChar.equals("{") && !isInString) {
-                    isInSonScript = true;
-                }
-                if (aChar.equals("}") && !isInString) {
-                    isInSonScript = false;
-                }
-                if (aChar.equals("(") && !isInString && !isInSonScript) {
-                    argsStart = charIndex + 1;
-                } else if (aChar.equals(")") && !isInString && !isInSonScript) {
-                    String argsString = sentence.substring(argsStart, charIndex);
-                    sentenceList.add(new ScriptSentence(script, sentence.substring(0, argsStart - 1), argsString));
-                }
-                charIndex++;
-            }
-        });
-
+        sentenceStringList.forEach(sentence -> sentenceList.add(new ScriptSentence(script, sentence)));
         sentenceList.forEach(ScriptSentence::run);
     }
 }
