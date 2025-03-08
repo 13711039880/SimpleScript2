@@ -1,2 +1,5 @@
 #main args#
-println((*java.lang.System.currentTimeMillis(null)));
+setVariable(a,(*java.lang.System.currentTimeMillis(null)));
+println(a);
+setVariable(a,(*java.lang.System.currentTimeMillis(null)));
+println(a);

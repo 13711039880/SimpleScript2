@@ -2,6 +2,7 @@ package org.a8043.simpleScript;
 
 import cn.hutool.core.thread.ThreadUtil;
 import org.a8043.simpleScript.exceptions.WrongTypeException;
+import org.a8043.simpleScript.runnerAnnotation.ReplaceVariable;
 import org.a8043.simpleUtil.util.Config;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
@@ -12,6 +13,7 @@ import java.awt.*;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.PrintStream;
 import java.lang.reflect.InvocationTargetException;
 import java.net.URL;
 import java.net.URLClassLoader;
@@ -29,26 +31,24 @@ public class ScriptRunner {
         this.script = script;
     }
 
+    @ReplaceVariable("all")
     public void println(Object @NotNull ... args) {
         if (args.length != 1) {
             throw new IllegalArgumentException("参数长度不正确");
         }
-        if (args[0] instanceof ScriptVariable) {
-            System.out.println(((ScriptVariable) args[0]).getValue());
-        } else {
-            System.out.println(args[0]);
-        }
+        System.out.println(args[0]);
     }
 
+    public PrintStream getOut(Object @NotNull ... args) {
+        return System.out;
+    }
+
+    @ReplaceVariable("all")
     public void print(Object @NotNull ... args) {
         if (args.length != 1) {
             throw new IllegalArgumentException("参数长度不正确");
         }
-        if (args[0] instanceof ScriptVariable) {
-            System.out.print(((ScriptVariable) args[0]).getValue());
-        } else {
-            System.out.print(args[0]);
-        }
+        System.out.print(args[0]);
     }
 
     public void newThread(Object @NotNull ... args) {
@@ -272,7 +272,8 @@ public class ScriptRunner {
         Object obj;
         try {
             obj = clazz.getDeclaredConstructor().newInstance();
-        } catch (InvocationTargetException | InstantiationException | IllegalAccessException | NoSuchMethodException e) {
+        } catch (InvocationTargetException | InstantiationException | IllegalAccessException |
+                 NoSuchMethodException e) {
             throw new RuntimeException(e);
         }
         variable.setValue(obj);

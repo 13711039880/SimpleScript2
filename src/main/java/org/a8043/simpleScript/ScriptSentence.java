@@ -1,8 +1,11 @@
 package org.a8043.simpleScript;
 
+import org.a8043.simpleScript.exceptions.RunnerAnnotationException;
 import org.a8043.simpleScript.exceptions.WrongTypeException;
+import org.a8043.simpleScript.runnerAnnotation.ReplaceVariable;
 import org.jetbrains.annotations.NotNull;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -246,6 +249,7 @@ public class ScriptSentence {
                 throw new RuntimeException("找不到方法: " + methodName);
             }
             try {
+                handleAnnotation(method);
                 returnValue.set(method.invoke(args.get(0), args.subList(1, args.size()).toArray()));
             } catch (IllegalAccessException | InvocationTargetException e) {
                 throw new RuntimeException(e);
@@ -256,6 +260,7 @@ public class ScriptSentence {
                 if (Arrays.stream(ScriptRunner.class.getMethods()).anyMatch(method -> method.getName().equals(newRun))) {
                     try {
                         Method method = ScriptRunner.class.getMethod(newRun, Object[].class);
+                        handleAnnotation(method);
                         method.invoke(script.getRunner(), (Object) args.toArray());
                     } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
                         throw new RuntimeException(e);
@@ -266,6 +271,7 @@ public class ScriptSentence {
                         if (Arrays.stream(library.getMethods()).anyMatch(method -> method.getName().equals(newRun))) {
                             try {
                                 Method method = library.getMethod(newRun, Object[].class);
+                                handleAnnotation(method);
                                 Object instance = library.getDeclaredConstructor(Script.class).newInstance(script);
                                 returnValue.set(method.invoke(instance, (Object) args.toArray()));
                             } catch (NoSuchMethodException | InvocationTargetException | InstantiationException |
@@ -283,5 +289,49 @@ public class ScriptSentence {
         }
 
         return returnValue.get();
+    }
+
+    private void handleAnnotation(@NotNull Method method) {
+        ReplaceVariable replaceVariableAnnotation;
+        if ((replaceVariableAnnotation = method.getAnnotation(ReplaceVariable.class)) != null) {
+            String value = replaceVariableAnnotation.value();
+            if (value.equals("all")) {
+                List<Object> newArgs = new ArrayList<>();
+                args.forEach(arg -> {
+                    if (arg instanceof ScriptVariable variable) {
+                        newArgs.add(variable.getValue());
+                    } else {
+                        newArgs.add(arg);
+                    }
+                });
+                args = newArgs;
+            } else if (value.endsWith("+")) {
+                String rangeString = value.substring(0, value.length() - 1);
+                int range = Integer.parseInt(rangeString);
+                List<Object> newArgs = new ArrayList<>();
+                args.forEach(arg -> {
+                    if (arg instanceof ScriptVariable variable && args.indexOf(arg) > range) {
+                        newArgs.add(variable.getValue());
+                    } else {
+                        newArgs.add(arg);
+                    }
+                });
+                args = newArgs;
+            } else if (value.startsWith("-")) {
+                String rangeString = value.substring(1);
+                int range = Integer.parseInt(rangeString);
+                List<Object> newArgs = new ArrayList<>();
+                args.forEach(arg -> {
+                    if (arg instanceof ScriptVariable variable && args.indexOf(arg) < range) {
+                        newArgs.add(variable.getValue());
+                    } else {
+                        newArgs.add(arg);
+                    }
+                });
+                args = newArgs;
+            } else {
+                throw new RunnerAnnotationException("错误: " + value);
+            }
+        }
     }
 }
