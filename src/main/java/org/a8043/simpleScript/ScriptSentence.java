@@ -1,7 +1,6 @@
 package org.a8043.simpleScript;
 
 import org.a8043.simpleScript.exceptions.WrongTypeException;
-import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 
 import java.lang.reflect.InvocationTargetException;
@@ -10,6 +9,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.a8043.simpleScript.Main.LIBRARIES_RUNNER_LIST;
@@ -105,7 +105,7 @@ public class ScriptSentence {
                                    || aChar.equals("6") || aChar.equals("7") || aChar.equals("8")
                                    || aChar.equals("9")) {
                             try {
-                                args.add(Double.parseDouble(arg));
+                                args.add(Integer.parseInt(arg));
                             } catch (NumberFormatException e) {
                                 throw new WrongTypeException("不正确的类型: " + arg);
                             }
@@ -179,6 +179,16 @@ public class ScriptSentence {
             }
         });
         if (run.startsWith("*")) {
+            List<Object> javaMethodNewArgs = new ArrayList<>();
+            args.forEach(arg -> {
+                if (arg instanceof ScriptVariable variable) {
+                    javaMethodNewArgs.add(variable.getValue());
+                } else {
+                    javaMethodNewArgs.add(arg);
+                }
+            });
+            args = javaMethodNewArgs;
+
             String newRun = run.substring(1);
             String[] runArray = newRun.split("\\.");
             Method method = null;
@@ -187,8 +197,32 @@ public class ScriptSentence {
                 methodName = runArray[0];
                 Object obj = args.get(0);
                 Class<?> clazz = obj.getClass();
-                for (Method aMethod : clazz.getMethods()) {
+                Method[] methods = clazz.getMethods();
+
+                int sameNameMethodCount = 0;
+                for (Method aMethod : methods) {
                     if (aMethod.getName().equals(methodName)) {
+                        sameNameMethodCount++;
+                    }
+                }
+
+                for (Method aMethod : methods) {
+                    Class<?>[] parameterTypes = aMethod.getParameterTypes();
+                    boolean isArgMatch = false;
+                    AtomicInteger matchCount = new AtomicInteger();
+                    if (parameterTypes.length == args.size() - 1) {
+                        AtomicInteger i = new AtomicInteger();
+                        args.forEach(arg -> {
+                            if (parameterTypes.length > i.get() && parameterTypes[i.get()].isInstance(arg)) {
+                                matchCount.getAndIncrement();
+                            }
+                            i.getAndIncrement();
+                        });
+                    }
+                    if (sameNameMethodCount == 1 || matchCount.get() == args.size() - 1) {
+                        isArgMatch = true;
+                    }
+                    if (aMethod.getName().equals(methodName) && isArgMatch) {
                         method = aMethod;
                     }
                 }
@@ -207,6 +241,7 @@ public class ScriptSentence {
                     }
                 }
             }
+
             if (method == null) {
                 throw new RuntimeException("找不到方法: " + methodName);
             }

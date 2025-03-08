@@ -12,6 +12,7 @@ import java.awt.*;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.InvocationTargetException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.Arrays;
@@ -64,7 +65,7 @@ public class ScriptRunner {
         if (args.length != 1) {
             throw new IllegalArgumentException("参数长度不正确");
         }
-        ThreadUtil.sleep(Double.parseDouble(args[0].toString()));
+        ThreadUtil.sleep(Integer.parseInt(args[0].toString()));
     }
 
     public void loadLibrary(Object @NotNull ... args) {
@@ -157,13 +158,13 @@ public class ScriptRunner {
         if (!(args[0] instanceof ScriptVariable variable)) {
             throw new WrongTypeException("参数类型不正确");
         }
-        if (!(args[1] instanceof Double width)) {
+        if (!(args[1] instanceof Integer width)) {
             throw new WrongTypeException("参数类型不正确");
         }
-        if (!(args[2] instanceof Double height)) {
+        if (!(args[2] instanceof Integer height)) {
             throw new WrongTypeException("参数类型不正确");
         }
-        ((JFrame) variable.getValue()).setSize(width.intValue(), height.intValue());
+        ((JFrame) variable.getValue()).setSize(width, height);
     }
 
     public void frame_add(Object @NotNull ... args) {
@@ -227,5 +228,65 @@ public class ScriptRunner {
         }
         ((JButton) variable.getValue()).addActionListener(e ->
             actionListener.run("actionPerformed", e));
+        new JPanel().setLayout(new FlowLayout());
+    }
+
+    public void frame_textField_new(Object @NotNull ... args) {
+        if (args.length != 1) {
+            throw new IllegalArgumentException("参数长度不正确");
+        }
+        if (!(args[0] instanceof ScriptVariable variable)) {
+            throw new WrongTypeException("参数类型不正确");
+        }
+        variable.setValue(new JTextField());
+    }
+
+    public Object newObj(Object @NotNull ... args) {
+        ScriptVariable variable;
+        String className;
+        if (args.length == 2) {
+            if (!(args[0] instanceof ScriptVariable variable1)) {
+                throw new WrongTypeException("参数类型不正确");
+            }
+            if (!(args[1] instanceof String className1)) {
+                throw new WrongTypeException("参数类型不正确");
+            }
+            variable = variable1;
+            className = className1;
+        } else if (args.length == 1) {
+            if (!(args[0] instanceof String className1)) {
+                throw new WrongTypeException("参数类型不正确");
+            }
+            variable = new ScriptVariable("");
+            className = className1;
+        } else {
+            throw new WrongTypeException("参数类型不正确");
+        }
+
+        Class<?> clazz;
+        try {
+            clazz = Class.forName(className);
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException(e);
+        }
+        Object obj;
+        try {
+            obj = clazz.getDeclaredConstructor().newInstance();
+        } catch (InvocationTargetException | InstantiationException | IllegalAccessException | NoSuchMethodException e) {
+            throw new RuntimeException(e);
+        }
+        variable.setValue(obj);
+
+        return obj;
+    }
+
+    public void setVariable(Object @NotNull ... args) {
+        if (args.length != 2) {
+            throw new IllegalArgumentException("参数长度不正确");
+        }
+        if (!(args[0] instanceof ScriptVariable variable)) {
+            throw new WrongTypeException("参数类型不正确");
+        }
+        variable.setValue(args[1]);
     }
 }
