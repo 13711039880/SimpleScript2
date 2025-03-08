@@ -2,6 +2,7 @@ package org.a8043.simpleScript;
 
 import org.a8043.simpleScript.exceptions.RunnerAnnotationException;
 import org.a8043.simpleScript.exceptions.WrongTypeException;
+import org.a8043.simpleScript.runnerAnnotation.ArgLength;
 import org.a8043.simpleScript.runnerAnnotation.ReplaceVariable;
 import org.jetbrains.annotations.NotNull;
 
@@ -331,6 +332,13 @@ public class ScriptSentence {
                 args = newArgs;
             } else {
                 throw new RunnerAnnotationException("错误: " + value);
+            }
+        }
+
+        ArgLength argLengthAnnotation;
+        if ((argLengthAnnotation = method.getAnnotation(ArgLength.class)) != null) {
+            if (args.size() != argLengthAnnotation.value()) {
+                throw new RunnerAnnotationException("参数长度不正确");
             }
         }
     }

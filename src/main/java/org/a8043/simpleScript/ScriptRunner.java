@@ -2,6 +2,7 @@ package org.a8043.simpleScript;
 
 import cn.hutool.core.thread.ThreadUtil;
 import org.a8043.simpleScript.exceptions.WrongTypeException;
+import org.a8043.simpleScript.runnerAnnotation.ArgLength;
 import org.a8043.simpleScript.runnerAnnotation.ReplaceVariable;
 import org.a8043.simpleUtil.util.Config;
 import org.jetbrains.annotations.Contract;
@@ -32,22 +33,14 @@ public class ScriptRunner {
     }
 
     @ReplaceVariable("all")
+    @ArgLength(1)
     public void println(Object @NotNull ... args) {
-        if (args.length != 1) {
-            throw new IllegalArgumentException("参数长度不正确");
-        }
         System.out.println(args[0]);
     }
 
-    public PrintStream getOut(Object @NotNull ... args) {
-        return System.out;
-    }
-
     @ReplaceVariable("all")
+    @ArgLength(1)
     public void print(Object @NotNull ... args) {
-        if (args.length != 1) {
-            throw new IllegalArgumentException("参数长度不正确");
-        }
         System.out.print(args[0]);
     }
 
