@@ -6,7 +6,6 @@ import org.a8043.simpleScript.runnerAnnotation.ArgLength;
 import org.a8043.simpleScript.runnerAnnotation.ReplaceVariable;
 import org.jetbrains.annotations.NotNull;
 
-import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -19,21 +18,117 @@ import java.util.concurrent.atomic.AtomicReference;
 import static org.a8043.simpleScript.Main.LIBRARIES_RUNNER_LIST;
 
 public class ScriptSentence {
-    private Script script;
-    private String run;
-    private List<Object> args = new ArrayList<>();
+    private final Script script;
+    private boolean isOrdinary = true;
 
-    public void init(Script script, @NotNull String run, @NotNull String argsString) {
+    private String varAssignmentName;
+    private Object varContent;
+
+    public ScriptSentence(Script script, @NotNull String sentence) {
         this.script = script;
-
         while (true) {
-            if (run.startsWith(" ")) {
-                run = run.substring(1);
+            if (sentence.startsWith(" ")) {
+                sentence = sentence.substring(1);
+            } else if (sentence.endsWith(" ")) {
+                sentence = sentence.substring(0, sentence.length() - 1);
             } else {
                 break;
             }
         }
-        this.run = run;
+
+        String[] sentenceChars = sentence.split("");
+        {
+            boolean isInString = false;
+            boolean isInSonScript = false;
+            List<Boolean> isInSonSentence = new ArrayList<>();
+            for (String aChar : sentenceChars) {
+                if (aChar.equals("\"")) {
+                    isInString = !isInString;
+                }
+                if (aChar.equals("{") && !isInString) {
+                    isInSonScript = true;
+                }
+                if (aChar.equals("}") && !isInString) {
+                    isInSonScript = false;
+                }
+                if (aChar.equals("(") && !isInString && !isInSonScript) {
+                    isInSonSentence.add(true);
+                }
+                if (aChar.equals(")") && !isInString && !isInSonScript) {
+                    isInSonSentence.remove(isInSonSentence.size() - 1);
+                }
+                if (!isInString && !isInSonScript && isInSonSentence.isEmpty() && aChar.equals("=")) {
+                    isOrdinary = false;
+                }
+            }
+        }
+        if (!isOrdinary) {
+            String[] split = sentence.split("=", 2);
+            varAssignmentName = split[0];
+            String contentString = split[1];
+            if (contentString.startsWith("\"")) {
+                varContent = contentString.substring(1, contentString.length() - 1);
+            } else if (contentString.endsWith("}")) {
+                varContent = contentString.substring(1, contentString.length() - 1);
+            } else if (contentString.endsWith(")")) {
+                String sentence1 = contentString.substring(1, contentString.length() - 1);
+                varContent = new ScriptSentence(script, sentence1).run();
+            } else if (contentString.startsWith("0") || contentString.startsWith("1") || contentString.startsWith("2")
+                       || contentString.startsWith("3") || contentString.startsWith("4") || contentString.startsWith("5")
+                       || contentString.startsWith("6") || contentString.startsWith("7") || contentString.startsWith("8")
+                       || contentString.startsWith("9")) {
+                try {
+                    varContent = Integer.parseInt(contentString);
+                } catch (NumberFormatException e) {
+                    throw new WrongTypeException("不正确的类型: " + varContent);
+                }
+            } else {
+                switch (contentString) {
+                    case "true" -> varContent = true;
+                    case "false" -> varContent = false;
+                    case "null" -> varContent = null;
+                    default -> varContent = script.getVariable(contentString);
+                }
+            }
+        } else {
+            boolean isInString = false;
+            boolean isInSonScript = false;
+            List<Boolean> isInSonSentence = new ArrayList<>();
+            int argsStart = 0;
+
+            int charIndex = 0;
+            for (String aChar : sentenceChars) {
+                if (aChar.equals("\"")) {
+                    isInString = !isInString;
+                }
+                if (aChar.equals("{") && !isInString) {
+                    isInSonScript = true;
+                }
+                if (aChar.equals("}") && !isInString) {
+                    isInSonScript = false;
+                }
+                if (aChar.equals("(") && !isInString && !isInSonScript) {
+                    isInSonSentence.add(true);
+                }
+                if (aChar.equals(")") && !isInString && !isInSonScript) {
+                    isInSonSentence.remove(isInSonSentence.size() - 1);
+                }
+                if (aChar.equals("(") && !isInString && !isInSonScript && isInSonSentence.size() == 1) {
+                    argsStart = charIndex + 1;
+                } else if (aChar.equals(")") && !isInString && !isInSonScript && isInSonSentence.isEmpty()) {
+                    String argsString = sentence.substring(argsStart, charIndex);
+                    ordinaryInit(script, sentence.substring(0, argsStart - 1), argsString);
+                }
+                charIndex++;
+            }
+        }
+    }
+
+    private String ordinaryRun;
+    private final List<Object> ordinaryArgs = new ArrayList<>();
+
+    public void ordinaryInit(Script script, @NotNull String run, @NotNull String argsString) {
+        ordinaryRun = run;
 
         if (!argsString.isEmpty()) {
             List<String> argsStringList = new ArrayList<>();
@@ -69,110 +164,109 @@ public class ScriptSentence {
             }
 
             argsStringList.forEach(arg -> {
-                String[] argsChars = arg.split("");
-                boolean isInString = false;
-                boolean isInSonScript = false;
-                List<Boolean> isInSonSentence = new ArrayList<>();
-                int argStart = 1;
-                int charIndex = 0;
-                int sonScriptStart = 0;
-                List<Integer> sonSentenceStart = new ArrayList<>();
-                for (String aChar : argsChars) {
-                    if (aChar.equals("\"")) {
-                        isInString = !isInString;
+                if (arg.startsWith("\"")) {
+                    ordinaryArgs.add(arg);
+                } else if (arg.endsWith("}")) {
+                    ordinaryArgs.add(new Script(arg));
+                } else if (arg.endsWith(")")) {
+                    ordinaryArgs.add(new ScriptSentence(script, arg));
+                } else if (arg.startsWith("0") || arg.startsWith("1") || arg.startsWith("2")
+                           || arg.startsWith("3") || arg.startsWith("4") || arg.startsWith("5")
+                           || arg.startsWith("6") || arg.startsWith("7") || arg.startsWith("8")
+                           || arg.startsWith("9")) {
+                    try {
+                        ordinaryArgs.add(Integer.parseInt(arg));
+                    } catch (NumberFormatException e) {
+                        throw new WrongTypeException("不正确的类型: " + varContent);
                     }
-                    if (aChar.equals("{") && !isInString) {
-                        sonScriptStart = charIndex + 1;
-                        isInSonScript = true;
-                    }
-                    if (aChar.equals("}") && !isInString) {
-                        isInSonScript = false;
-                    }
-                    if (aChar.equals("(") && !isInString && !isInSonScript) {
-                        sonSentenceStart.add(charIndex + 1);
-                        isInSonSentence.add(true);
-                    }
-                    if (aChar.equals(")") && !isInString && !isInSonScript) {
-                        isInSonSentence.remove(isInSonSentence.size() - 1);
-                    }
-                    if ((charIndex + 1 == argsChars.length || argsChars[charIndex + 1].equals(","))
-                        && !isInString && !isInSonScript && isInSonSentence.isEmpty()) {
-                        if (aChar.equals("\"")) {
-                            args.add(arg.substring(argStart, charIndex));
-                        } else if (aChar.equals("}")) {
-                            args.add(new Script(arg.substring(sonScriptStart, charIndex)));
-                        } else if (aChar.equals(")")) {
-                            String sentence = arg.substring(sonSentenceStart.get(0), charIndex);
-                            args.add(new ScriptSentence(script, sentence));
-                        } else if (aChar.equals("0") || aChar.equals("1") || aChar.equals("2")
-                                   || aChar.equals("3") || aChar.equals("4") || aChar.equals("5")
-                                   || aChar.equals("6") || aChar.equals("7") || aChar.equals("8")
-                                   || aChar.equals("9")) {
-                            try {
-                                args.add(Integer.parseInt(arg));
-                            } catch (NumberFormatException e) {
-                                throw new WrongTypeException("不正确的类型: " + arg);
-                            }
-                        } else {
-                            switch (arg) {
-                                case "true" -> args.add(true);
-                                case "false" -> args.add(false);
-                                case "null" -> args.add(null);
-                                default -> args.add(script.getVariable(arg));
-                            }
+                } else {
+                    switch (arg) {
+                        case "true" -> ordinaryArgs.add(true);
+                        case "false" -> ordinaryArgs.add(false);
+                        case "null" -> ordinaryArgs.add(null);
+                        default -> {
+                            ordinaryArgs.add(script.getVariable(arg));
                         }
-                        argStart = charIndex + 1;
                     }
-                    charIndex++;
                 }
+//                String[] argsChars = arg.split("");
+//                boolean isInString = false;
+//                boolean isInSonScript = false;
+//                List<Boolean> isInSonSentence = new ArrayList<>();
+//                int argStart = 1;
+//                int charIndex = 0;
+//                int sonScriptStart = 0;
+//                List<Integer> sonSentenceStart = new ArrayList<>();
+//                for (String aChar : argsChars) {
+//                    if (aChar.equals("\"")) {
+//                        isInString = !isInString;
+//                    }
+//                    if (aChar.equals("{") && !isInString) {
+//                        sonScriptStart = charIndex + 1;
+//                        isInSonScript = true;
+//                    }
+//                    if (aChar.equals("}") && !isInString) {
+//                        isInSonScript = false;
+//                    }
+//                    if (aChar.equals("(") && !isInString && !isInSonScript) {
+//                        sonSentenceStart.add(charIndex + 1);
+//                        isInSonSentence.add(true);
+//                    }
+//                    if (aChar.equals(")") && !isInString && !isInSonScript) {
+//                        isInSonSentence.remove(isInSonSentence.size() - 1);
+//                    }
+//                    if ((charIndex + 1 == argsChars.length || argsChars[charIndex + 1].equals(","))
+//                        && !isInString && !isInSonScript && isInSonSentence.isEmpty()) {
+//                        if (aChar.equals("\"")) {
+//                            ordinaryArgs.add(arg.substring(argStart, charIndex));
+//                        } else if (aChar.equals("}")) {
+//                            ordinaryArgs.add(new Script(arg.substring(sonScriptStart, charIndex)));
+//                        } else if (aChar.equals(")")) {
+//                            String sentence = arg.substring(sonSentenceStart.get(0), charIndex);
+//                            ordinaryArgs.add(new ScriptSentence(script, sentence));
+//                        } else if (aChar.equals("0") || aChar.equals("1") || aChar.equals("2")
+//                                   || aChar.equals("3") || aChar.equals("4") || aChar.equals("5")
+//                                   || aChar.equals("6") || aChar.equals("7") || aChar.equals("8")
+//                                   || aChar.equals("9")) {
+//                            try {
+//                                ordinaryArgs.add(Integer.parseInt(arg));
+//                            } catch (NumberFormatException e) {
+//                                throw new WrongTypeException("不正确的类型: " + arg);
+//                            }
+//                        } else {
+//                            switch (arg) {
+//                                case "true" -> ordinaryArgs.add(true);
+//                                case "false" -> ordinaryArgs.add(false);
+//                                case "null" -> ordinaryArgs.add(null);
+//                                default -> ordinaryArgs.add(script.getVariable(arg));
+//                            }
+//                        }
+//                        argStart = charIndex + 1;
+//                    }
+//                    charIndex++;
+//                }
             });
         }
     }
 
-    public ScriptSentence(Script script, @NotNull String sentence) {
-        String[] sentenceChars = sentence.split("");
-        boolean isInString = false;
-        boolean isInSonScript = false;
-        List<Boolean> isInSonSentence = new ArrayList<>();
-        int argsStart = 0;
-
-        int charIndex = 0;
-        for (String aChar : sentenceChars) {
-            if (aChar.equals("\"")) {
-                isInString = !isInString;
-            }
-            if (aChar.equals("{") && !isInString) {
-                isInSonScript = true;
-            }
-            if (aChar.equals("}") && !isInString) {
-                isInSonScript = false;
-            }
-            if (aChar.equals("(") && !isInString && !isInSonScript) {
-                isInSonSentence.add(true);
-            }
-            if (aChar.equals(")") && !isInString && !isInSonScript) {
-                isInSonSentence.remove(isInSonSentence.size() - 1);
-            }
-            if (aChar.equals("(") && !isInString && !isInSonScript && isInSonSentence.size() == 1) {
-                argsStart = charIndex + 1;
-            } else if (aChar.equals(")") && !isInString && !isInSonScript && isInSonSentence.isEmpty()) {
-                String argsString = sentence.substring(argsStart, charIndex);
-                init(script, sentence.substring(0, argsStart - 1), argsString);
-            }
-            charIndex++;
+    public Object run() {
+        if (isOrdinary) {
+            return ordinaryRun(ordinaryRun, ordinaryArgs);
+        } else {
+            script.setVariable(varAssignmentName, varContent);
+            return null;
         }
     }
 
-    public Object run() {
-        List<Object> newArgs = new ArrayList<>();
-        args.forEach(arg -> {
+    private Object ordinaryRun(@NotNull String run, @NotNull List<Object> oldArgs) {
+        List<Object> args = new ArrayList<>();
+        oldArgs.forEach(arg -> {
             if (arg instanceof ScriptSentence sentence) {
-                newArgs.add(sentence.run());
+                args.add(sentence.run());
             } else {
-                newArgs.add(arg);
+                args.add(arg);
             }
         });
-        args = newArgs;
 
         AtomicReference<Object> returnValue = new AtomicReference<>();
         AtomicBoolean isFinishRun = new AtomicBoolean(false);
@@ -191,7 +285,6 @@ public class ScriptSentence {
                     javaMethodNewArgs.add(arg);
                 }
             });
-            args = javaMethodNewArgs;
 
             String newRun = run.substring(1);
             String[] runArray = newRun.split("\\.");
@@ -199,7 +292,7 @@ public class ScriptSentence {
             String methodName;
             if (runArray.length == 1) {
                 methodName = runArray[0];
-                Object obj = args.get(0);
+                Object obj = javaMethodNewArgs.get(0);
                 Class<?> clazz = obj.getClass();
                 Method[] methods = clazz.getMethods();
 
@@ -214,16 +307,16 @@ public class ScriptSentence {
                     Class<?>[] parameterTypes = aMethod.getParameterTypes();
                     boolean isArgMatch = false;
                     AtomicInteger matchCount = new AtomicInteger();
-                    if (parameterTypes.length == args.size() - 1) {
+                    if (parameterTypes.length == javaMethodNewArgs.size() - 1) {
                         AtomicInteger i = new AtomicInteger();
-                        args.forEach(arg -> {
+                        javaMethodNewArgs.forEach(arg -> {
                             if (parameterTypes.length > i.get() && parameterTypes[i.get()].isInstance(arg)) {
                                 matchCount.getAndIncrement();
                             }
                             i.getAndIncrement();
                         });
                     }
-                    if (sameNameMethodCount == 1 || matchCount.get() == args.size() - 1) {
+                    if (sameNameMethodCount == 1 || matchCount.get() == javaMethodNewArgs.size() - 1) {
                         isArgMatch = true;
                     }
                     if (aMethod.getName().equals(methodName) && isArgMatch) {
@@ -250,7 +343,7 @@ public class ScriptSentence {
                 throw new RuntimeException("找不到方法: " + methodName);
             }
             try {
-                handleAnnotation(method);
+                handleAnnotation(method, args);
                 returnValue.set(method.invoke(args.get(0), args.subList(1, args.size()).toArray()));
             } catch (IllegalAccessException | InvocationTargetException e) {
                 throw new RuntimeException(e);
@@ -261,7 +354,7 @@ public class ScriptSentence {
                 if (Arrays.stream(ScriptRunner.class.getMethods()).anyMatch(method -> method.getName().equals(newRun))) {
                     try {
                         Method method = ScriptRunner.class.getMethod(newRun, Object[].class);
-                        handleAnnotation(method);
+                        handleAnnotation(method, args);
                         method.invoke(script.getRunner(), (Object) args.toArray());
                     } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
                         throw new RuntimeException(e);
@@ -272,7 +365,7 @@ public class ScriptSentence {
                         if (Arrays.stream(library.getMethods()).anyMatch(method -> method.getName().equals(newRun))) {
                             try {
                                 Method method = library.getMethod(newRun, Object[].class);
-                                handleAnnotation(method);
+                                handleAnnotation(method, args);
                                 Object instance = library.getDeclaredConstructor(Script.class).newInstance(script);
                                 returnValue.set(method.invoke(instance, (Object) args.toArray()));
                             } catch (NoSuchMethodException | InvocationTargetException | InstantiationException |
@@ -292,7 +385,7 @@ public class ScriptSentence {
         return returnValue.get();
     }
 
-    private void handleAnnotation(@NotNull Method method) {
+    private void handleAnnotation(@NotNull Method method, List<Object> args) {
         ReplaceVariable replaceVariableAnnotation;
         if ((replaceVariableAnnotation = method.getAnnotation(ReplaceVariable.class)) != null) {
             String value = replaceVariableAnnotation.value();
@@ -305,31 +398,34 @@ public class ScriptSentence {
                         newArgs.add(arg);
                     }
                 });
-                args = newArgs;
+                args.clear();
+                args.addAll(newArgs);
             } else if (value.endsWith("+")) {
                 String rangeString = value.substring(0, value.length() - 1);
                 int range = Integer.parseInt(rangeString);
                 List<Object> newArgs = new ArrayList<>();
                 args.forEach(arg -> {
-                    if (arg instanceof ScriptVariable variable && args.indexOf(arg) > range) {
+                    if (arg instanceof ScriptVariable variable && newArgs.indexOf(arg) > range) {
                         newArgs.add(variable.getValue());
                     } else {
                         newArgs.add(arg);
                     }
                 });
-                args = newArgs;
+                args.clear();
+                args.addAll(newArgs);
             } else if (value.startsWith("-")) {
                 String rangeString = value.substring(1);
                 int range = Integer.parseInt(rangeString);
                 List<Object> newArgs = new ArrayList<>();
                 args.forEach(arg -> {
-                    if (arg instanceof ScriptVariable variable && args.indexOf(arg) < range) {
+                    if (arg instanceof ScriptVariable variable && newArgs.indexOf(arg) < range) {
                         newArgs.add(variable.getValue());
                     } else {
                         newArgs.add(arg);
                     }
                 });
-                args = newArgs;
+                args.clear();
+                args.addAll(newArgs);
             } else {
                 throw new RunnerAnnotationException("错误: " + value);
             }

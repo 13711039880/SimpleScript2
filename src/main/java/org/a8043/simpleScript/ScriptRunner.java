@@ -32,6 +32,11 @@ public class ScriptRunner {
         this.script = script;
     }
 
+    public void printAllVar(Object @NotNull ... args) {
+        script.getVariableList().forEach(var ->
+            System.out.println(var.getName() + " = " + var.getValue()));
+    }
+
     @ReplaceVariable("all")
     @ArgLength(1)
     public void println(Object @NotNull ... args) {
@@ -42,6 +47,11 @@ public class ScriptRunner {
     @ArgLength(1)
     public void print(Object @NotNull ... args) {
         System.out.print(args[0]);
+    }
+
+    @ReplaceVariable("all")
+    public void printf(Object @NotNull ... args) {
+        System.out.printf(args[0].toString(), Arrays.copyOfRange(args, 1, args.length));
     }
 
     public void newThread(Object @NotNull ... args) {

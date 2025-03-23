@@ -15,6 +15,7 @@ public class Script {
     private final List<ScriptMethod> methodList = new ArrayList<>();
     @Getter
     private ScriptRunner runner;
+    @Getter
     private final List<ScriptVariable> variableList = new ArrayList<>();
 
     public Script(File file) {
