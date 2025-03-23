@@ -165,7 +165,7 @@ public class ScriptSentence {
 
             argsStringList.forEach(arg -> {
                 if (arg.startsWith("\"")) {
-                    ordinaryArgs.add(arg);
+                    ordinaryArgs.add(arg.substring(1, arg.length() - 1));
                 } else if (arg.endsWith("}")) {
                     ordinaryArgs.add(new Script(arg));
                 } else if (arg.endsWith(")")) {
@@ -184,9 +184,7 @@ public class ScriptSentence {
                         case "true" -> ordinaryArgs.add(true);
                         case "false" -> ordinaryArgs.add(false);
                         case "null" -> ordinaryArgs.add(null);
-                        default -> {
-                            ordinaryArgs.add(script.getVariable(arg));
-                        }
+                        default -> ordinaryArgs.add(script.getVariable(arg));
                     }
                 }
 //                String[] argsChars = arg.split("");

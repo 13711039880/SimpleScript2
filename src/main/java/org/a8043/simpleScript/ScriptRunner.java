@@ -1,5 +1,6 @@
 package org.a8043.simpleScript;
 
+import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.thread.ThreadUtil;
 import org.a8043.simpleScript.exceptions.WrongTypeException;
 import org.a8043.simpleScript.runnerAnnotation.ArgLength;
@@ -11,13 +12,11 @@ import org.yaml.snakeyaml.Yaml;
 
 import javax.swing.*;
 import java.awt.*;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.PrintStream;
+import java.io.*;
 import java.lang.reflect.InvocationTargetException;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
 
@@ -292,5 +291,68 @@ public class ScriptRunner {
             throw new WrongTypeException("参数类型不正确");
         }
         variable.setValue(args[1]);
+    }
+
+    @ReplaceVariable("all")
+    @ArgLength(1)
+    public void importScript(Object @NotNull ... args) {
+        Script importScript = new Script(FileUtil.readString(new File(args[0].toString()), StandardCharsets.UTF_8));
+        List<ScriptMethod> methodList = this.script.getMethodList();
+        methodList.addAll(importScript.getMethodList());
+    }
+
+    @ReplaceVariable("all")
+    @ArgLength(1)
+    public Script script(Object @NotNull ... args) {
+        return new Script(FileUtil.readString(new File(args[0].toString()), StandardCharsets.UTF_8));
+    }
+
+    @ReplaceVariable("all")
+    @ArgLength(2)
+    public void exec(Object @NotNull ... args) {
+        Process process;
+        try {
+            process = Runtime.getRuntime().exec(args[0].toString());
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        Script script = (Script) args[1];
+        InputStream inputStream = process.getInputStream();
+        InputStream errorStream = process.getErrorStream();
+        new Thread(() -> {
+            BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
+            try {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    script.run("out", line);
+                }
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }).start();
+        new Thread(() -> {
+            BufferedReader reader = new BufferedReader(new InputStreamReader(errorStream));
+            try {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    script.run("err", line);
+                }
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }).start();
+    }
+
+    @ReplaceVariable("all")
+    @ArgLength(1)
+    public void exit(Object @NotNull ... args) {
+        System.exit(Integer.parseInt(args[0].toString()));
+    }
+
+    @ReplaceVariable("all")
+    @ArgLength(1)
+    public String readFile(Object @NotNull ... args) {
+        return FileUtil.readString(new File(args[0].toString()), StandardCharsets.UTF_8);
     }
 }

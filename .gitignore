@@ -36,3 +36,9 @@ build/
 
 ### Mac OS ###
 .DS_Store
+
+### Other ###
+/dependency-reduced-pom.xml
+/icon.ico
+/RunSimpleScript.bat
+/RunSimpleScript.exe
